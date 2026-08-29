@@ -219,8 +219,46 @@ export function sanitizePrompt(p: string): string {
     .trim();
 }
 
-export function composeImagePrompt(prompt: string): string {
-  return `${STYLE}. ${sanitizePrompt(prompt)}. ${SINGLE_PANEL_GUARD}. 16:9 widescreen cinematic framing.`;
+/** Splits the text-only consistency sheet into `Name -> fixed traits` entries. */
+export function parseBible(bible: string): { name: string; traits: string }[] {
+  return bible
+    .split("\n")
+    .map((l) => l.replace(/^[\s\-*•\d.)]+/, "").trim())
+    .filter(Boolean)
+    .map((l) => {
+      const i = l.indexOf(":");
+      if (i < 1) return null;
+      const name = l.slice(0, i).trim();
+      const traits = l.slice(i + 1).trim();
+      if (!name || name.length > 40 || !traits) return null;
+      return { name, traits };
+    })
+    .filter((v): v is { name: string; traits: string } => v !== null)
+    .slice(0, 6);
+}
+
+/**
+ * Deterministic character lock: whichever API key renders this scene, the same
+ * fixed traits are appended verbatim, so characters never drift between shots.
+ * The sheet is text only — it is injected as traits, never drawn as a sheet.
+ */
+export function characterLock(prompt: string, bible?: string): string {
+  if (!bible) return "";
+  const entries = parseBible(bible);
+  if (entries.length === 0) return "";
+  const lower = prompt.toLowerCase();
+  const matched = entries.filter((e) => lower.includes(e.name.toLowerCase()));
+  const use = matched.length > 0 ? matched : entries.slice(0, 2);
+  return (
+    "Fixed character appearance (must match exactly in every panel): " +
+    use.map((e) => `${e.name} — ${e.traits.replace(/\.$/, "")}`).join("; ") +
+    "."
+  );
+}
+
+export function composeImagePrompt(prompt: string, bible?: string): string {
+  const lock = characterLock(prompt, bible);
+  return `${STYLE}. ${sanitizePrompt(prompt)}. ${lock ? lock + " " : ""}${SINGLE_PANEL_GUARD}. 16:9 widescreen cinematic framing.`;
 }
 
 /** Calls Flux.1 Schnell (free tier) with automatic retries. Always 16:9. */
@@ -228,6 +266,7 @@ export async function generateImage(
   prompt: string,
   seed: number,
   slot = 0,
+  bible?: string,
 ): Promise<string> {
   const keys = pixazoKeys();
 
