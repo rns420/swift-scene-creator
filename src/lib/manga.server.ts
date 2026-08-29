@@ -283,7 +283,7 @@ export async function generateImage(
           "Ocp-Apim-Subscription-Key": key,
         },
         body: JSON.stringify({
-          prompt: composeImagePrompt(prompt).slice(0, 1800),
+          prompt: composeImagePrompt(prompt, bible).slice(0, 1800),
           num_steps: 4,
           seed: seed + attempt,
           width: 1024,
