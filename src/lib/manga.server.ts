@@ -141,6 +141,7 @@ export async function buildCharacterBible(script: string): Promise<string> {
 export async function writePrompts(
   bible: string,
   segments: Segment[],
+  slot = 0,
 ): Promise<string[]> {
   const numbered = segments
     .map((s, i) => `${i + 1}. [${s.start}s-${s.end}s] ${s.text}`)
@@ -175,6 +176,7 @@ export async function writePrompts(
       maxTokens: 900 + segments.length * 300,
       timeoutMs: 90_000,
       attempts: 3,
+      slot,
     },
     );
   } catch (e) {
