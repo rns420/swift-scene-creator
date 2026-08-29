@@ -92,6 +92,9 @@ function Index() {
 
       // Prompts + drawing run together: each small batch starts drawing as
       // soon as its prompts arrive, so nothing waits on the whole script.
+      // One batch per API key slot: batches run at the same time on
+      // different keys instead of queueing behind a single key.
+      const KEY_SLOTS = 4;
       const BATCH = 3;
       const batches: Segment[][] = [];
       for (let i = 0; i < segments.length; i += BATCH) batches.push(segments.slice(i, i + BATCH));
@@ -104,11 +107,12 @@ function Index() {
         );
       tick();
 
-      await pool(batches, 4, async (batch) => {
+      await pool(batches, KEY_SLOTS, async (batch) => {
+        const slot = (batch[0]?.index ?? 0) % KEY_SLOTS;
         batch.forEach((s) => patch(s.index, { status: "prompting" }));
         let prompts: string[] = [];
         try {
-          const res = await getPrompts({ data: { bible: b, segments: batch } });
+          const res = await getPrompts({ data: { bible: b, segments: batch, slot } });
           prompts = res.prompts as string[];
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
@@ -129,7 +133,9 @@ function Index() {
             }
             patch(s.index, { prompt, status: "drawing" });
             try {
-              const { url } = await draw({ data: { prompt, seed: 1000 + s.index } });
+              const { url } = await draw({
+                data: { prompt, seed: 1000 + s.index, slot: s.index % KEY_SLOTS },
+              });
               patch(s.index, { url, status: "done" });
               list = list.map((x) => (x.index === s.index ? { ...x, prompt, url, status: "done" as const } : x));
             } catch (e) {
@@ -156,16 +162,21 @@ function Index() {
 
   async function retryFailed() {
     setPhase("running");
-    await pool(failed, 2, async (shot) => {
+    const KEY_SLOTS = 4;
+    await pool(failed, KEY_SLOTS, async (shot) => {
       patch(shot.index, { status: "drawing" });
       try {
         let prompt = shot.prompt;
         if (!prompt) {
-          const { prompts } = await getPrompts({ data: { bible, segments: [shot] } });
+          const { prompts } = await getPrompts({
+            data: { bible, segments: [shot], slot: shot.index % KEY_SLOTS },
+          });
           prompt = prompts[0] as string;
           patch(shot.index, { prompt });
         }
-        const { url } = await draw({ data: { prompt, seed: 7000 + shot.index } });
+        const { url } = await draw({
+          data: { prompt, seed: 7000 + shot.index, slot: shot.index % KEY_SLOTS },
+        });
         patch(shot.index, { url, status: "done", error: undefined });
       } catch (e) {
         patch(shot.index, { status: "error", error: e instanceof Error ? e.message : String(e) });
