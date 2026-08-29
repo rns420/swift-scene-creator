@@ -26,14 +26,17 @@ export async function zaiChat(
     maxTokens?: number;
     timeoutMs?: number;
     attempts?: number;
+    /** Scene/batch index — spreads concurrent calls over the key pool. */
+    slot?: number;
   } = {},
 ): Promise<string> {
-  const key = process.env["PARALON_API_KEY"];
-  if (!key) throw new Error("Missing PARALON_API_KEY");
+  const keys = paralonKeys();
+  const slot = opts.slot ?? 0;
 
   const attempts = opts.attempts ?? 3;
   let lastErr = "";
   for (let attempt = 0; attempt < attempts; attempt++) {
+    const key = pickKey(keys, slot, attempt);
     try {
       const res = await fetch(CHAT_URL, {
         method: "POST",
@@ -43,6 +46,7 @@ export async function zaiChat(
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+
           model: opts.model ?? CHAT_MODEL,
           temperature: opts.temperature ?? 0.6,
           // Disable Qwen3 thinking/reasoning mode so the model answers directly
