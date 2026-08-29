@@ -222,13 +222,18 @@ export function composeImagePrompt(prompt: string): string {
 }
 
 /** Calls Flux.1 Schnell (free tier) with automatic retries. Always 16:9. */
-export async function generateImage(prompt: string, seed: number): Promise<string> {
-  const key = process.env["PIXAZO_API_KEY"];
-  if (!key) throw new Error("Missing PIXAZO_API_KEY");
+export async function generateImage(
+  prompt: string,
+  seed: number,
+  slot = 0,
+): Promise<string> {
+  const keys = pixazoKeys();
 
   let lastErr = "";
   for (let attempt = 0; attempt < 5; attempt++) {
+    const key = pickKey(keys, slot, attempt);
     try {
+
       const res = await fetch(PIXAZO_URL, {
         method: "POST",
         headers: {
