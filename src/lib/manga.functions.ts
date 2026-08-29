@@ -19,6 +19,9 @@ export const promptsForBatch = createServerFn({ method: "POST" })
     z
       .object({
         bible: z.string(),
+        // which API key slot this batch should use, so parallel batches
+        // spread across the whole key pool
+        slot: z.number().int().min(0).default(0),
         segments: z.array(
           z.object({
             index: z.number(),
@@ -31,15 +34,21 @@ export const promptsForBatch = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const prompts = await writePrompts(data.bible, data.segments);
+    const prompts = await writePrompts(data.bible, data.segments, data.slot);
     return { prompts };
   });
 
 export const renderImage = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
-    z.object({ prompt: z.string().min(5), seed: z.number().int() }).parse(d),
+    z
+      .object({
+        prompt: z.string().min(5),
+        seed: z.number().int(),
+        slot: z.number().int().min(0).default(0),
+      })
+      .parse(d),
   )
   .handler(async ({ data }) => {
-    const url = await generateImage(data.prompt, data.seed);
+    const url = await generateImage(data.prompt, data.seed, data.slot);
     return { url };
   });
