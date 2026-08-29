@@ -44,11 +44,13 @@ export const renderImage = createServerFn({ method: "POST" })
       .object({
         prompt: z.string().min(5),
         seed: z.number().int(),
+        // text-only character consistency sheet, injected into every render
+        bible: z.string().optional(),
         slot: z.number().int().min(0).default(0),
       })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const url = await generateImage(data.prompt, data.seed, data.slot);
+    const url = await generateImage(data.prompt, data.seed, data.slot, data.bible);
     return { url };
   });

@@ -134,7 +134,7 @@ function Index() {
             patch(s.index, { prompt, status: "drawing" });
             try {
               const { url } = await draw({
-                data: { prompt, seed: 1000 + s.index, slot: s.index % KEY_SLOTS },
+                data: { prompt, seed: 1000 + s.index, slot: s.index % KEY_SLOTS, bible: b },
               });
               patch(s.index, { url, status: "done" });
               list = list.map((x) => (x.index === s.index ? { ...x, prompt, url, status: "done" as const } : x));
@@ -175,7 +175,7 @@ function Index() {
           patch(shot.index, { prompt });
         }
         const { url } = await draw({
-          data: { prompt, seed: 7000 + shot.index, slot: shot.index % KEY_SLOTS },
+          data: { prompt, seed: 7000 + shot.index, slot: shot.index % KEY_SLOTS, bible },
         });
         patch(shot.index, { url, status: "done", error: undefined });
       } catch (e) {
