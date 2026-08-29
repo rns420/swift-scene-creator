@@ -1,4 +1,5 @@
 import type { Segment } from "./script";
+import { paralonKeys, pixazoKeys, pickKey } from "./keys.server";
 
 const CHAT_URL = "https://paraloncloud.com/v1/chat/completions";
 const CHAT_MODEL = "qwen3.8-27b";
